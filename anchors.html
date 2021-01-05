@@ -90,6 +90,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // Ensure the background is transparent for AR.
       scene.clear = false;
 
+      var useAR = false;
+      
       function initXR() {
         xrButton = new WebXRButton({
           onRequestSession: onRequestSession,
@@ -99,17 +101,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           textExitXRTitle: "EXIT  AR",
         });
         document.querySelector('header').appendChild(xrButton.domElement);
-
+        
         if (navigator.xr) {
+          xrButton.enabled = supported;
           navigator.xr.isSessionSupported('immersive-ar')
                       .then((supported) => {
-            xrButton.enabled = supported;
+            useAR = true;
           });
         }
       }
 
       function onRequestSession() {
-        return navigator.xr.requestSession('immersive-ar',
+        return navigator.xr.requestSession(useAR ? 'immersive-ar' : 'immersive-vr',
                                            {requiredFeatures: ['viewer', 'unbounded', 'anchors']})
                            .then((session) => {
           xrButton.setSession(session);
