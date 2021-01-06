@@ -74,10 +74,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       shadowedARObject.addNode(flower);
       unShadowedARObject.addNode(flower);
 
-      let reticle = new Gltf2Node({url: 'media/gltf/reticle/reticle.gltf'});
-      reticle.visible = false;
-      scene.addNode(reticle);
-
       // Having a really simple drop shadow underneath an object helps ground
       // it in the world without adding much complexity.
       let shadow = new DropShadowNode();
@@ -136,12 +132,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        // The reticle will sit 1 meter in front of the viewer space
-        let viewerSpaceReticleOffset = new XRRigidTransform({x: 0, y: 0, z: -1.0}, {x:0, y:0, z:1.0, w: 1.0});
-        session.requestReferenceSpace('viewer').then((refSpace) => {
-          xrViewerSpace = refSpace.getOffsetReferenceSpace(viewerSpaceReticleOffset);
-        });
-
         session.requestReferenceSpace('unbounded').then((refSpace) => {
           xrRefSpace = refSpace;
 
@@ -195,11 +185,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       function onSelect(event) {
         let frame = event.frame;
-        let matrix = reticle.matrix;
 
         let anchorPose = new XRRigidTransform();
         // Create a free-floating anchor.
-        frame.createAnchor(anchorPose, referenceSpace).then((anchor) => {
+        frame.createAnchor(anchorPose, event.inputSource.targetRaySpace).then((anchor) => {
           addAnchoredObjectsToScene(anchor);
         }, (error) => {
           console.error("Could not create anchor: " + error);
@@ -209,25 +198,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // Called every time a XRSession requests that a new frame be drawn.
       function onXRFrame(t, frame) {
         let session = frame.session;
-        let pose = frame.getPose(xrViewerSpace, xrRefSpace);
-        
-        if (pose) {
-            reticle.matrix = pose.transform.matrix;
+        let pose = frame.getViewerPose(xrRefSpace);
 
-          // Update the position of all the anchored objects based on the currently reported positions of their anchors
-          for (const {anchoredObject, anchor} of anchoredObjects) {
-            const anchorPose = xrFrame.getPose(anchor.anchorSpace, referenceSpace)
-            anchoredObject.matrix = anchorPose.matrix;
-          }
-
-          scene.startFrame();
-
-          session.requestAnimationFrame(onXRFrame);
-
-          scene.drawXRFrame(frame, pose);
-
-          scene.endFrame();
+        // Update the position of all the anchored objects based on the currently reported positions of their anchors
+        for (const {anchoredObject, anchor} of anchoredObjects) {
+          const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrRefSpace);
+          anchoredObject.matrix = anchorPose.matrix;
         }
+
+        scene.startFrame();
+
+        session.requestAnimationFrame(onXRFrame);
+
+        scene.drawXRFrame(frame, pose);
+
+        scene.endFrame();
       }
 
       // Start the XR application.
