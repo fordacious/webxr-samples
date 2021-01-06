@@ -109,7 +109,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       function onRequestSession() {
         return navigator.xr.requestSession(useAR ? 'immersive-ar' : 'immersive-vr',
-                                           {requiredFeatures: ['viewer', 'unbounded', 'anchors']})
+                                           {requiredFeatures: ['viewer', 'local', 'anchors']})
                            .then((session) => {
           xrButton.setSession(session);
           onSessionStarted(session);
@@ -132,7 +132,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        session.requestReferenceSpace('unbounded').then((refSpace) => {
+        session.requestReferenceSpace('local').then((refSpace) => {
           xrRefSpace = refSpace;
 
           session.requestAnimationFrame(onXRFrame);
