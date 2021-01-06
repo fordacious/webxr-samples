@@ -153,12 +153,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       function onSessionStarted(session) {
         session.addEventListener('end', onSessionEnded);
 
-        if (session.isImmersive) {
-          // When in 'immersive-ar' mode don't draw an opaque background because
-          // we want the real world to show through.
-          skybox.visible = false;
-        }
-
         initGL();
 
         session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
@@ -239,10 +233,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         let pose = frame.getViewerPose(refSpace);
 
         // Update the position of all the anchored objects based on the currently reported positions of their anchors
-        // for (const {anchoredObject, anchor} of anchoredObjects) {
-        //   const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
-        //   anchoredObject.matrix = anchorPose.matrix;
-        // }
+        for (const {anchoredObject, anchor} of anchoredObjects) {
+          const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
+          anchoredObject.matrix = anchorPose.matrix;
+        }
 
         scene.startFrame();
 
