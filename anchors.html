@@ -184,7 +184,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (anchoredObjects.length > MAX_ANCHORED_OBJECTS) {
           let objectToRemove = anchoredObjects.shift();
           scene.removeNode(objectToRemove.anchoredObject);
-          objectToRemove.anchor.detach();
+          objectToRemove.anchor.delete();
         }
       }
 
