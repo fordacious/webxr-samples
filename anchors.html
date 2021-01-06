@@ -45,16 +45,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       import {WebXRButton} from './js/util/webxr-button.js';
       import {Scene} from './js/render/scenes/scene.js';
       import {Renderer, createWebGLContext} from './js/render/core/renderer.js';
+      import {InlineViewerHelper} from './js/util/inline-viewer-helper.js';
       import {Node} from './js/render/core/node.js';
       import {Gltf2Node} from './js/render/nodes/gltf2.js';
       import {DropShadowNode} from './js/render/nodes/drop-shadow.js';
       import {vec3} from './js/render/math/gl-matrix.js';
       import {Ray} from './js/render/math/ray.js';
+      import {QueryArgs} from './js/util/query-args.js';
+
+      // If requested, use the polyfill to provide support for mobile devices
+      // and devices which only support WebVR.
+      import WebXRPolyfill from './js/third-party/webxr-polyfill/build/webxr-polyfill.module.js';
+      if (QueryArgs.getBool('usePolyfill', true)) {
+        let polyfill = new WebXRPolyfill();
+      }
 
       // XR globals.
       let xrButton = null;
-      let xrRefSpace = null;
-      let xrViewerSpace = null;
+      let xrImmersiveRefSpace = null;
 
       // WebGL scene globals.
       let gl = null;
@@ -85,8 +93,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       // Ensure the background is transparent for AR.
       scene.clear = false;
-
-      var useAR = false;
       
       function initXR() {
         xrButton = new WebXRButton({
@@ -97,44 +103,72 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           textExitXRTitle: "EXIT  AR",
         });
         document.querySelector('header').appendChild(xrButton.domElement);
-        
+
         if (navigator.xr) {
-          xrButton.enabled = true;
-          navigator.xr.isSessionSupported('immersive-ar')
-                      .then((supported) => {
-            useAR = true;
+          // Checks to ensure that 'immersive-ar' mode is available, and only
+          // enables the button if so.
+          navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+            xrButton.enabled = supported;
           });
+
+          navigator.xr.requestSession('inline').then(onSessionStarted);
         }
       }
 
-      function onRequestSession() {
-        return navigator.xr.requestSession(useAR ? 'immersive-ar' : 'immersive-vr',
-                                           {requiredFeatures: ['viewer', 'local', 'anchors']})
-                           .then((session) => {
-          xrButton.setSession(session);
-          onSessionStarted(session);
+       function onRequestSession() {
+        // Requests an 'immersive-ar' session, which ensures that the users
+        // environment will be visible either via video passthrough or a
+        // transparent display. This may be presented either in a headset or
+        // fullscreen on a mobile device.
+        return navigator.xr.requestSession('immersive-ar', {requiredFeatures: ['anchors']})
+            .then((session) => {
+              xrButton.setSession(session);
+              session.isImmersive = true;
+              onSessionStarted(session);
+            });
+      }
+
+      function initGL() {
+        if (gl)
+          return;
+
+        gl = createWebGLContext({
+          xrCompatible: true
         });
+        document.body.appendChild(gl.canvas);
+
+        function onResize() {
+          gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+          gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+        }
+        window.addEventListener('resize', onResize);
+        onResize();
+
+        renderer = new Renderer(gl);
+
+        scene.setRenderer(renderer);
       }
 
       function onSessionStarted(session) {
         session.addEventListener('end', onSessionEnded);
-        session.addEventListener('select', onSelect);
 
-        if (!gl) {
-          gl = createWebGLContext({
-            xrCompatible: true
-          });
-
-          renderer = new Renderer(gl);
-
-          scene.setRenderer(renderer);
+        if (session.isImmersive) {
+          // When in 'immersive-ar' mode don't draw an opaque background because
+          // we want the real world to show through.
+          skybox.visible = false;
         }
+
+        initGL();
 
         session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        session.requestReferenceSpace('local').then((refSpace) => {
-          xrRefSpace = refSpace;
-
+        let refSpaceType = session.isImmersive ? 'local' : 'viewer';
+        session.requestReferenceSpace(refSpaceType).then((refSpace) => {
+          if (session.isImmersive) {
+            xrImmersiveRefSpace = refSpace;
+          } else {
+            inlineViewerHelper = new InlineViewerHelper(gl.canvas, refSpace);
+          }
           session.requestAnimationFrame(onXRFrame);
         });
       }
@@ -198,11 +232,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // Called every time a XRSession requests that a new frame be drawn.
       function onXRFrame(t, frame) {
         let session = frame.session;
-        let pose = frame.getViewerPose(xrRefSpace);
+        let refSpace = session.isImmersive ?
+                         xrImmersiveRefSpace :
+                         inlineViewerHelper.referenceSpace;
+        let pose = frame.getViewerPose(refSpace);
 
         // Update the position of all the anchored objects based on the currently reported positions of their anchors
         for (const {anchoredObject, anchor} of anchoredObjects) {
-          const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrRefSpace);
+          const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
           anchoredObject.matrix = anchorPose.matrix;
         }
 
