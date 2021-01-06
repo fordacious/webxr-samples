@@ -75,18 +75,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let skybox = new SkyboxNode({url: 'media/textures/milky-way-4k.png'});
       scene.addNode(skybox);
 
-      let shadowedARObject = new Node();
-      shadowedARObject.visible = false;
-      scene.addNode(shadowedARObject);
-
-      let unShadowedARObject = new Node();
-      unShadowedARObject.visible = false;
-      scene.addNode(unShadowedARObject);
-
-      let flower = new Gltf2Node({url: 'media/gltf/sunflower/sunflower.gltf'});
-      shadowedARObject.addNode(flower);
-      unShadowedARObject.addNode(flower);
-
       // Having a really simple drop shadow underneath an object helps ground
       // it in the world without adding much complexity.
       let shadow = new DropShadowNode();
@@ -189,23 +177,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       }
 
       function addAnchoredObjectsToScene(anchor) {
-        // Add an object tied to the anchor, and another object not tied to the anchor.
-        // These objects may drift apart over time, as the anchor is used to lock only one
-        // of the objects to real world coordinate.
-        let anchoredObject = shadowedARObject.clone();
-        anchoredObject.visible = true;
-        anchoredObject.matrix = matrix;
-        scene.addNode(anchoredObject);
-
-        // The unanchored object is differentiated by its lack of shadow.
-        let unAnchoredObject = unShadowedARObject.clone();
-        unAnchoredObject.visible = true;
-        unAnchoredObject.matrix = matrix;
-
-        scene.addNode(unAnchoredObject);
+        let flower = new Gltf2Node({url: 'media/gltf/sunflower/sunflower.gltf'});
+        scene.addNode(flower);
         anchoredObjects.push({
-          anchoredObject: anchoredObject,
-          unAnchoredObject: unAnchoredObject,
+          anchoredObject: flower,
           anchor: anchor
         });
 
@@ -215,7 +190,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (anchoredObjects.length > MAX_ANCHORED_OBJECTS) {
           let objectToRemove = anchoredObjects.shift();
           scene.removeNode(objectToRemove.anchoredObject);
-          scene.removeNode(objectToRemove.unAnchoredObject);
           objectToRemove.anchor.detach();
         }
       }
