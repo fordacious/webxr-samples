@@ -48,7 +48,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       import {SkyboxNode} from './js/render/nodes/skybox.js';
       import {InlineViewerHelper} from './js/util/inline-viewer-helper.js';
       import {Gltf2Node} from './js/render/nodes/gltf2.js';
-      import {QueryArgs} from './js/util/query-args.js';
+      import {BoxBuilder} from '../js/cottontail/src/geometry/box-builder.js';
+      import {PbrMaterial} from '../js/cottontail/src/materials/pbr.js';
+      import {QueryArgs} from '../js/cottontail/src/util/query-args.js';
+      import {mat4} from '../js/cottontail/src/math/gl-matrix.js';
 
       // If requested, use the polyfill to provide support for mobile devices
       // and devices which only support WebVR.
@@ -61,22 +64,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let xrButton = null;
       let xrImmersiveRefSpace = null;
       let inlineViewerHelper = null;
+      let boxes_left = [];
+      let boxes_right = [];
+      let boxes = { left: boxes_left, right: boxes_right };
+      let isAR = false;
+      let radii = new Float32Array(XRHand.LITTLE_PHALANX_TIP+1);
+      let positions = new Float32Array(16*(XRHand.LITTLE_PHALANX_TIP+1));
 
       // WebGL scene globals.
-      let gl = null;
-      let renderer = null;
-      let scene = new Scene();
-      let solarSystem = new Gltf2Node({url: 'media/gltf/space/space.gltf'});
-      // The solar system is big (citation needed). Scale it down so that users
-      // can move around the planets more easily.
-      solarSystem.scale = [0.1, 0.1, 0.1];
-      scene.addNode(solarSystem);
-      // Still adding a skybox, but only for the benefit of the inline view.
-      let skybox = new SkyboxNode({url: 'media/textures/milky-way-4k.png'});
-      scene.addNode(skybox);
+    let gl = null;
+    let renderer = null;
+    let scene = new Scene();
+    scene.addNode(new Gltf2Node({ url: 'media/gltf/space/space.gltf' }));
+    scene.addNode(new SkyboxNode({ url: 'media/textures/milky-way-4k.png' }));
 
-      const MAX_ANCHORED_OBJECTS = 30;
-      let anchoredObjects = [];
+    function addBox(x, y, z, r, g, b, box_list, offset) {
+      let boxBuilder = new BoxBuilder();
+      boxBuilder.pushCube([0, 0, 0], 1.5 * 0.01);
+      let boxPrimitive = boxBuilder.finishPrimitive(renderer);
+      let boxMaterial = new PbrMaterial();
+      boxMaterial.baseColorFactor.value = [r, g, b, 1];
+      let boxRenderPrimitive = renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+      let boxNode = new Node();
+      boxNode.addRenderPrimitive(boxRenderPrimitive);
+      // Marks the node as one that needs to be checked when hit testing.
+      boxNode.selectable = true;
+      box_list.push({
+        node: boxNode,
+        renderPrimitive: boxRenderPrimitive,
+        position: [x, y, z],
+        offset: offset
+      });
+    }
+
+    function initHands() {
+      for (const box of boxes_left) {
+        scene.removeNode(box.node);
+      }
+      for (const box of boxes_right) {
+        scene.removeNode(box.node);
+      }
+      boxes_left = [];
+      boxes_right = [];
+      boxes = { left: boxes_left, right: boxes_right };
+      if (typeof XRHand !== 'undefined') {
+        for (let i = 0; i <= XRHand.LITTLE_PHALANX_TIP; i++) {
+          const r = .6 + Math.random() * .4;
+          const g = .6 + Math.random() * .4;
+          const b = .6 + Math.random() * .4;
+          addBox(0, 0, 0, r, g, b, boxes_left, i);
+          addBox(0, 0, 0, r, g, b, boxes_right, i);
+        }
+      }
+    }
 
       function initXR() {
         xrButton = new WebXRButton({
@@ -91,7 +131,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (navigator.xr) {
           // Checks to ensure that 'immersive-vr' mode is available, and only
           // enables the button if so.
-          navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+          navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
             xrButton.enabled = supported;
           });
 
@@ -104,7 +144,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // environment will be visible either via video passthrough or a
         // transparent display. This may be presented either in a headset or
         // fullscreen on a mobile device.
-        return navigator.xr.requestSession('immersive-vr', {requiredFeatures: ['anchors']})
+        return navigator.xr.requestSession('immersive-vr', {requiredFeatures: ['hand-tracking']})
             .then((session) => {
               xrButton.setSession(session);
               session.isImmersive = true;
@@ -135,13 +175,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       function onSessionStarted(session) {
         session.addEventListener('end', onSessionEnded);
-        session.addEventListener('select', onSelect);
 
         if (session.isImmersive) {
           // When in 'immersive-vr' mode don't draw an opaque background because
           // we want the real world to show through.
           skybox.visible = false;
         }
+
+        session.addEventListener('visibilitystate', e => {
+          // remove hand controller while blurred
+          if(e.session.visibilitystate === 'visible-blurred') {
+            for (const box of boxes["left"]) {
+              scene.removeNode(box.node);
+            }
+            for (const box of boxes["right"]) {
+              scene.removeNode(box.node);
+            }
+          }
+        });
 
         initGL();
 
@@ -170,34 +221,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         }
       }
 
-      function addAnchoredObjectsToScene(anchor) {
-        let flower = new Gltf2Node({url: 'media/gltf/sunflower/sunflower.gltf'});
-        scene.addNode(flower);
-        anchoredObjects.push({
-          anchoredObject: flower,
-          anchor: anchor
-        });
+      function updateInputSources(session, frame, refSpace) {
+        for (let inputSource of session.inputSources) {
+          let offset = 0;
+          if (!inputSource.hand) {
+            continue;
+          } else {
+            for (const box of boxes[inputSource.handedness]) {
+              scene.removeNode(box.node);
+            }
 
-        // For performance reasons if we add too many objects start
-        // removing the oldest ones to keep the scene complexity
-        // from growing too much.
-        if (anchoredObjects.length > MAX_ANCHORED_OBJECTS) {
-          let objectToRemove = anchoredObjects.shift();
-          scene.removeNode(objectToRemove.anchoredObject);
-          objectToRemove.anchor.delete();
+            let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
+            if (pose === undefined) {
+              console.log("no pose");
+            }
+
+            // if (!frame.fillJointRadii(inputSource.hand, radii)) {
+            //   console.log("no fillRadii");
+            //   continue;
+            // }
+            // if (!frame.fillPoses(inputSource.hand, refSpace, positions)) {
+            //   console.log("no fillPoses");
+            //   continue;
+            // }
+
+            var i = 0;
+            for (const box of boxes[inputSource.handedness]) {
+              scene.addNode(box.node);
+              let jointPose = frame.getPose(inputSource.hand[i], refSpace);
+              let jointRadius = inputSource.hand[i].radius;
+              let matrix = jointPose.transform.matrix;
+              i++;
+              //let matrix = positions.slice(offset, offset + 16);
+              //offset += 16;
+              //let jointRadius = radii[box.offset] * 100;
+              if (jointRadius === null) {
+                // for fingertips
+                jointRadius = 1;
+              }
+              mat4.getTranslation(box.node.translation, matrix);
+              mat4.getRotation(box.node.rotation, matrix);
+              box.node.scale = [jointRadius, jointRadius, jointRadius];
+            }
+          }
         }
-      }
-
-      function onSelect(event) {
-        let frame = event.frame;
-
-        let anchorPose = new XRRigidTransform();
-        // Create a free-floating anchor.
-        frame.createAnchor(new XRRigidTransform(), event.inputSource.targetRaySpace).then((anchor) => {
-          addAnchoredObjectsToScene(anchor);
-        }, (error) => {
-          console.error("Could not create anchor: " + error);
-        });
       }
 
       // Called every time a XRSession requests that a new frame be drawn.
@@ -208,11 +275,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                          inlineViewerHelper.referenceSpace;
         let pose = frame.getViewerPose(refSpace);
 
-        // Update the position of all the anchored objects based on the currently reported positions of their anchors
-        for (const {anchoredObject, anchor} of anchoredObjects) {
-          const anchorPose = frame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
-          anchoredObject.matrix = anchorPose.transform.matrix;
-        }
+        updateInputSources(session, frame, refSpace);
 
         scene.startFrame();
 
