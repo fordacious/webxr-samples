@@ -210,7 +210,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         // Update the position of all the anchored objects based on the currently reported positions of their anchors
         for (const {anchoredObject, anchor} of anchoredObjects) {
-          const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
+          const anchorPose = frame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
           anchoredObject.matrix = anchorPose.matrix;
         }
 
