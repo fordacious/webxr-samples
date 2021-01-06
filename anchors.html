@@ -75,12 +75,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let skybox = new SkyboxNode({url: 'media/textures/milky-way-4k.png'});
       scene.addNode(skybox);
 
-      // Having a really simple drop shadow underneath an object helps ground
-      // it in the world without adding much complexity.
-      let shadow = new DropShadowNode();
-      vec3.set(shadow.scale, 0.15, 0.15, 0.15);
-      shadowedARObject.addNode(shadow);
-
       const MAX_ANCHORED_OBJECTS = 30;
       let anchoredObjects = [];
 
