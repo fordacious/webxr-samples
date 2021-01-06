@@ -69,7 +69,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let gl = null;
       let renderer = null;
       let scene = new Scene();
-      scene.enableStats(false);
+      scene.enableStats(true);
 
       let shadowedARObject = new Node();
       shadowedARObject.visible = false;
@@ -239,10 +239,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         let pose = frame.getViewerPose(refSpace);
 
         // Update the position of all the anchored objects based on the currently reported positions of their anchors
-        for (const {anchoredObject, anchor} of anchoredObjects) {
-          const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
-          anchoredObject.matrix = anchorPose.matrix;
-        }
+        // for (const {anchoredObject, anchor} of anchoredObjects) {
+        //   const anchorPose = xrFrame.getPose(anchor.anchorSpace, xrImmersiveRefSpace);
+        //   anchoredObject.matrix = anchorPose.matrix;
+        // }
 
         scene.startFrame();
 
