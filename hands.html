@@ -283,7 +283,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               //let matrix = positions.slice(offset, offset + 16);
               //offset += 16;
               //let jointRadius = radii[box.offset] * 100;
-              if (jointRadius === null) {
+              if (!jointRadius) {
                 // for fingertips
                 jointRadius = 1;
               }
