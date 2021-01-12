@@ -263,19 +263,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               console.log("no pose");
             }
 
-            // if (!frame.fillJointRadii(inputSource.hand, radii)) {
-            //   console.log("no fillRadii");
-            //   continue;
-            // }
-            // if (!frame.fillPoses(inputSource.hand, refSpace, positions)) {
-            //   console.log("no fillPoses");
-            //   continue;
-            // }
+            if (!frame.fillJointRadii(inputSource.hand.values(), radii)) {
+               //console.log("no fillRadii");
+               //continue;
+            }
+            if (!frame.fillPoses(inputSource.hand.values(), refSpace, positions)) {
+               //console.log("no fillPoses");
+               //continue;
+            }
 
             var i = 0;
+            let tipPose = frame.getPose(inputSource.hand["index-finger-tip"], refSpace);
             for (const box of boxes[inputSource.handedness]) {
               scene.addNode(box.node);
-              let joint = inputSource.hand.get(box.jointName);
+              let joint = inputSource.hand[box.jointName];
               let jointPose = frame.getPose(joint, refSpace);
               let jointRadius = jointPose.radius;
               let matrix = jointPose.transform.matrix;
