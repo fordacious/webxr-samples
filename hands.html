@@ -228,10 +228,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           if (!inputSource.hand) {
             continue;
           } else {
-            for (const box of boxes[inputSource.handedness]) {
-              scene.removeNode(box.node);
-            }
-
             let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
             if (pose === undefined) {
               console.log("no pose");
@@ -275,6 +271,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                          xrImmersiveRefSpace :
                          inlineViewerHelper.referenceSpace;
         let pose = frame.getViewerPose(refSpace);
+        
+        if (!boxes_left.length) {
+            initHands();
+        }
 
         updateInputSources(session, frame, refSpace);
 
