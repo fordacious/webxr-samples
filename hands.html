@@ -80,6 +80,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     scene.addNode(new Gltf2Node({ url: 'media/gltf/space/space.gltf' }));
     scene.addNode(new SkyboxNode({ url: 'media/textures/milky-way-4k.png' }));
 
+    let jointNames = [
+        "wrist",
+        "thumb-metacarpal",
+        "thumb-phalanx-proximal",
+        "thumb-phalanx-distal",
+        "thumb-tip",
+        "index-finger-metacarpal",
+        "index-finger-phalanx-proximal",
+        "index-finger-phalanx-intermediate",
+        "index-finger-phalanx-distal",
+        "index-finger-tip",
+        "middle-finger-metacarpal",
+        "middle-finger-phalanx-proximal",
+        "middle-finger-phalanx-intermediate",
+        "middle-finger-phalanx-distal",
+        "middle-finger-tip",
+        "ring-finger-metacarpal",
+        "ring-finger-phalanx-proximal",
+        "ring-finger-phalanx-intermediate",
+        "ring-finger-phalanx-distal",
+        "ring-finger-tip",
+        "pinky-finger-metacarpal",
+        "pinky-finger-phalanx-proximal",
+        "pinky-finger-phalanx-intermediate",
+        "pinky-finger-phalanx-distal",
+        "pinky-finger-tip"
+    ];
+      
     function addBox(x, y, z, r, g, b, box_list, offset) {
       let boxBuilder = new BoxBuilder();
       boxBuilder.pushCube([0, 0, 0], 1.5 * 0.01);
@@ -95,7 +123,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         node: boxNode,
         renderPrimitive: boxRenderPrimitive,
         position: [x, y, z],
-        offset: offset
+        offset: offset,
+        jointName: jointNames[offset]
       });
     }
 
@@ -246,7 +275,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             var i = 0;
             for (const box of boxes[inputSource.handedness]) {
               scene.addNode(box.node);
-              let jointPose = frame.getPose(inputSource.hand[i], refSpace);
+              let jointPose = frame.getPose(inputSource.hand.get(box.jointName), refSpace);
               let jointRadius = inputSource.hand[i].radius;
               let matrix = jointPose.transform.matrix;
               i++;
