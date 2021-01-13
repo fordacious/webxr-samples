@@ -288,6 +288,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 // for fingertips
                 jointRadius = 1;
               }
+              jointRadius *= 100;
               mat4.getTranslation(box.node.translation, matrix);
               mat4.getRotation(box.node.rotation, matrix);
               box.node.scale = [jointRadius, jointRadius, jointRadius];
