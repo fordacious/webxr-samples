@@ -227,6 +227,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         initGL();
 
+        // This and all future samples that visualize controllers will use this
+        // convenience method to listen for changes to the active XRInputSources
+        // and load the right meshes based on the profiles array.
+        scene.inputRenderer.useProfileControllerMeshes(session);
+
         session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
         let refSpaceType = session.isImmersive ? 'local' : 'viewer';
