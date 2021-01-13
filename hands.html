@@ -258,7 +258,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           if (!inputSource.hand) {
             continue;
           } else {
-            let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
+            let pose = frame.getJointPose(inputSource.targetRaySpace, refSpace);
             if (pose === undefined) {
               console.log("no pose");
             }
