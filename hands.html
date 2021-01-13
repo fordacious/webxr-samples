@@ -273,10 +273,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }
 
             var i = 0;
-            let tipPose = frame.getPose(inputSource.hand["index-finger-tip"], refSpace);
+            let tipPose = frame.getPose(inputSource.hand.get("index-finger-tip"), refSpace);
             for (const box of boxes[inputSource.handedness]) {
               scene.addNode(box.node);
-              let joint = inputSource.hand[box.jointName];
+              let joint = inputSource.hand.get(box.jointName);
               let jointPose = frame.getPose(joint, refSpace);
               let jointRadius = jointPose.radius;
               let matrix = jointPose.transform.matrix;
