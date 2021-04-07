@@ -109,19 +109,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     ];
       
     function addBox(x, y, z, r, g, b, box_list, offset) {
-      let boxBuilder = new BoxBuilder();
-      boxBuilder.pushCube([0, 0, 0], 1.5 * 0.01);
-      let boxPrimitive = boxBuilder.finishPrimitive(renderer);
-      let boxMaterial = new PbrMaterial();
-      boxMaterial.baseColorFactor.value = [r, g, b, 1];
-      let boxRenderPrimitive = renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+      function prim() {
+        let boxBuilder = new BoxBuilder();
+        boxBuilder.pushCube([0, 0, 0], 1);
+        let boxPrimitive = boxBuilder.finishPrimitive(renderer);
+        let boxMaterial = new PbrMaterial();
+        boxMaterial.baseColorFactor.value = [r, g, b, 1];
+        return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+      }
+      function primAxis(r, g, b, x, y, z) {
+        let boxBuilder = new BoxBuilder();
+        boxBuilder.pushCube([x, y, z], 1);
+        let boxPrimitive = boxBuilder.finishPrimitive(renderer);
+        let boxMaterial = new PbrMaterial();
+        boxMaterial.baseColorFactor.value = [r, g, b, 1];
+        return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+      }
+
       let boxNode = new Node();
-      boxNode.addRenderPrimitive(boxRenderPrimitive);
+      boxNode.addRenderPrimitive(prim());
+
+      boxNode.addRenderPrimitive(primAxis(1, 0, 0, 1, 0, 0)); // X
+      boxNode.addRenderPrimitive(primAxis(0, 1, 0, 0, 1, 0)); // Y
+      boxNode.addRenderPrimitive(primAxis(0, 0, 1, 0, 0, 1)); // Z
+
       // Marks the node as one that needs to be checked when hit testing.
       boxNode.selectable = true;
       box_list.push({
         node: boxNode,
-        renderPrimitive: boxRenderPrimitive,
         position: [x, y, z],
         offset: offset,
         jointName: jointNames[offset]
@@ -293,7 +308,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 // for fingertips
                 jointRadius = 1;
               }
-              jointRadius *= 100;
+              //jointRadius *= 100;
               mat4.getTranslation(box.node.translation, matrix);
               mat4.getRotation(box.node.rotation, matrix);
               box.node.scale = [jointRadius, jointRadius, jointRadius];
